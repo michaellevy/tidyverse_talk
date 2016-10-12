@@ -1,0 +1,269 @@
+---
+title: tidyverse
+author: Michael Levy, Prepared for the Davis R-Users' Group
+date: October 13, 2016
+output: github_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+
+## What is the tidyverse?
+
+~~Hadleyverse~~
+
+The tidyverse is a suite of R tools that follow a tidy philosophy:
+
+### Tidy data
+
+Put data in data frames  
+
+- Each type of observation gets a data frame
+- Each variable gets a column
+- Each observation gets a row
+
+### Tidy APIs
+
+Functions should be consistent and easily (human) readable
+
+- Take one step at a time
+- Connect simple steps with the pipe
+- Referential transparency
+
+
+### Okay but really, what is it? 
+
+Suite of ~20 packages that provide consistent, user-friendly, smart-default tools to do most of what most people do in R.
+
+- Core packages: ggplot2, dplyr, tidyr, readr, purrr, tibble
+- Specialized data manipulation: hms, stringr, lubridate, forcats
+- Data import: DBI, haven, httr, jsonlite, readxl, rvest, xml2
+- Modeling: modelr, broom
+
+`install.packages(tidyverse)` installs all of the above packages.
+
+`library(tidyverse)` attaches only the core packages.
+
+
+## Why tidyverse?
+
+- Consistency  
+    - e.g. All `stringr` functions take string first  
+    - e.g. Many functions take data.frame first -> piping
+        - Faster to write
+        - Easier to read
+    - Tidy data: Imposes good practices
+    - Type specification
+- You probably use some of it already. Synergize.
+- Implements simple solutions to common problems (e.g. `purrr`!)
+- Smarter defaults 
+    - e.g. `utils::write.csv(row.names = FALSE)` = `readr::write_csv()` 
+- Runs fast (thanks to `Rcpp`)
+- Interfaces well with other tools (e.g. Spark with `dplyr` via `sparklyr`)
+
+## `tibble`
+
+> A modern reimagining of data frames.
+
+```{r Attach core packages}
+library(tidyverse)
+```
+
+```{r class tbl}
+tdf = tibble(x = 1:1e4, y = rnorm(1e4))  # == data_frame(x = 1:1e4, y = rnorm(1e4))
+class(tdf)
+```
+
+
+Tibbles print politely. 
+
+```{r print tbl}
+tdf
+```
+
+
+- Can customize print methods with `print(tdf, n = rows, width = cols)`
+
+- Set default with `options(tibble.print_max = rows, tibble.width = cols)`
+
+Tibbles have some convenient and consistent defaults that are different from base R data.frames.
+
+#### strings as factors
+
+```{r strings as factors}
+dfs = list(
+  df = data.frame(abc = letters[1:3], xyz = letters[24:26]),
+  tbl = data_frame(abc = letters[1:3], xyz = letters[24:26])
+)
+sapply(dfs, function(d) class(d$abc))
+```
+
+
+#### partial matching of names
+
+```{r partial matching}
+sapply(dfs, function(d) d$a)
+```
+
+#### type consistency
+
+```{r single bracket excision}
+sapply(dfs, function(d) class(d[, "abc"]))
+```
+
+Note that tidyverse import functions (e.g. `readr::read_csv`) default to tibbles and that *this can break existing code*.
+
+#### List-columns!
+
+```{r, list columns}
+tibble(x = lapply(1:5, function(x) x^(1:x)))
+```
+
+
+## The pipe `%>%`
+
+Sends the output of the LHS function to the first argument of the RHS function.
+
+```{r pipe}
+sum(1:8) %>%
+  sqrt()
+```
+
+
+## `dplyr`
+
+Common data(frame) manipulation taks. 
+
+Four core "verbs": filter, select, arrange, group_by + summarize, plus many more convenience functions. 
+
+
+```{r load movies}
+library(ggplot2movies)
+str(movies)
+```
+
+```{r filter}
+filter(movies, length > 360)
+```
+
+```{r select}
+filter(movies, length > 360) %>%
+  select(title, rating, votes)
+```
+
+```{r arrange}
+filter(movies, Animation == 1, votes > 1000) %>%
+  select(title, rating) %>%
+  arrange(desc(rating))
+```
+
+`summarize` makes `aggregate` and `tapply` functionality easier, and the output is always a data frame.
+
+```{r summarize}
+filter(movies, mpaa != "") %>%
+  group_by(year, mpaa) %>%
+  summarize(avg_budget = mean(budget, na.rm = TRUE),
+            avg_rating = mean(rating, na.rm = TRUE)) %>%
+  arrange(desc(year), mpaa)
+```
+
+
+`count` for frequency tables. Note the consistent API and easy readability vs. `table`.
+
+```{r count}
+filter(movies, mpaa != "") %>%
+  count(year, mpaa, Animation, sort = TRUE)
+```
+
+
+```{r table}
+basetab = with(movies[movies$mpaa != "", ], table(year, mpaa, Animation))
+basetab[1:5, , ]
+```
+
+
+
+## `tidyr`
+
+Latest generation of `reshape`. `gather` to make wide table long, `spread` to make long tables wide.
+
+```{r}
+who
+```
+
+```{r}
+who %>%
+  gather(group, cases, -country, -iso2, -iso3, -year)
+```
+
+
+## `ggplot2`
+
+If you don't already know and love it, check out [one of](https://d-rug.github.io/blog/2012/ggplot-introduction) [our](https://d-rug.github.io/blog/2013/xtsmarkdown) [previous](https://d-rug.github.io/blog/2013/formatting-plots-for-pubs) [talks](https://d-rug.github.io/blog/2015/ggplot-tutorial-johnston) on ggplot or any of the excellent resources on the internet. 
+
+Note that the pipe and consistent API make it easy to combine functions from different packages, and the whole thing is quite readable.
+
+```{r dplyr-tidyr-ggplot, fig.width = 4, fig.asp = 1}
+who %>%
+  select(-iso2, -iso3) %>%
+  gather(group, cases, -country, -year) %>%
+  count(country, year, wt = cases) %>%
+  ggplot(aes(x = year, y = n, group = country)) +
+  geom_line(size = .2) 
+```
+
+
+## `readr`
+
+For reading flat files. Faster than base with smarter defaults.
+
+```{r}
+bigdf = data_frame(int = 1:1e6, 
+                   squares = int^2, 
+                   letters = sample(letters, 1e6, replace = TRUE))
+```
+
+```{r base write}
+system.time(
+  write.csv(bigdf, "base-write.csv")
+)
+```
+
+```{r readr write}
+system.time(
+  write_csv(bigdf, "readr-write.csv")
+)
+```
+
+```{r base read}
+read.csv("base-write.csv", nrows = 3)
+```
+
+```{r readr read}
+read_csv("readr-write.csv", n_max = 3)
+```
+
+
+
+---
+
+For stringr...
+
+```{r}
+
+library(stringr)
+who %>%
+    select(-iso2, -iso3) %>%
+    gather(group, cases, -country, -year) %>%
+    mutate(group = str_replace(group, "(new_)|(new)", ""),
+           method = str_extract(group, "[a-z]+"),
+           gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
+           age_group = str_extract(group, "[0-9]+")) %>%
+    group_by(country, year, method) %>%
+    summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
+    ggplot(aes(x = year, y = total_cases, group = country)) +
+    geom_line() +
+    facet_wrap(~ method)
+```
