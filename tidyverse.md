@@ -48,9 +48,9 @@ Why tidyverse?
         -   Faster to write
         -   Easier to read
     -   Tidy data: Imposes good practices
-    -   Type specification
+    -   Type stability
 -   You probably use some of it already. Synergize.
--   Implements simple solutions to common problems (e.g. `purrr`!)
+-   Implements simple solutions to common problems (e.g. `purrr::transpose`)
 -   Smarter defaults
     -   e.g. `utils::write.csv(row.names = FALSE)` = `readr::write_csv()`
 -   Runs fast (thanks to `Rcpp`)
@@ -64,18 +64,6 @@ Why tidyverse?
 ``` r
 library(tidyverse)
 ```
-
-    ## Loading tidyverse: ggplot2
-    ## Loading tidyverse: tibble
-    ## Loading tidyverse: tidyr
-    ## Loading tidyverse: readr
-    ## Loading tidyverse: purrr
-    ## Loading tidyverse: dplyr
-
-    ## Conflicts with tidy packages ----------------------------------------------
-
-    ## filter(): dplyr, stats
-    ## lag():    dplyr, stats
 
 ``` r
 tdf = tibble(x = 1:1e4, y = rnorm(1e4))  # == data_frame(x = 1:1e4, y = rnorm(1e4))
@@ -91,18 +79,18 @@ tdf
 ```
 
     ## # A tibble: 10,000 × 2
-    ##        x           y
-    ##    <int>       <dbl>
-    ## 1      1 -0.05985947
-    ## 2      2  0.36991681
-    ## 3      3  0.55610851
-    ## 4      4 -0.18125650
-    ## 5      5 -0.93476016
-    ## 6      6 -0.66538208
-    ## 7      7  0.60730674
-    ## 8      8  0.84813702
-    ## 9      9  0.16010145
-    ## 10    10 -0.69335896
+    ##        x          y
+    ##    <int>      <dbl>
+    ## 1      1  1.7307583
+    ## 2      2  1.4246209
+    ## 3      3  0.2762850
+    ## 4      4  1.9267297
+    ## 5      5  1.8189041
+    ## 6      6  1.1574624
+    ## 7      7  0.1248573
+    ## 8      8 -0.1066158
+    ## 9      9 -0.7412011
+    ## 10    10 -0.9383221
     ## # ... with 9,990 more rows
 
 -   Can customize print methods with `print(tdf, n = rows, width = cols)`
@@ -156,17 +144,18 @@ Note that tidyverse import functions (e.g. `readr::read_csv`) default to tibbles
 #### List-columns!
 
 ``` r
-tibble(x = lapply(1:5, function(x) x^(1:x)))
+tibble(ints = 1:5,
+       powers = lapply(1:5, function(x) x^(1:x)))
 ```
 
-    ## # A tibble: 5 × 1
-    ##           x
-    ##      <list>
-    ## 1 <dbl [1]>
-    ## 2 <dbl [2]>
-    ## 3 <dbl [3]>
-    ## 4 <dbl [4]>
-    ## 5 <dbl [5]>
+    ## # A tibble: 5 × 2
+    ##    ints    powers
+    ##   <int>    <list>
+    ## 1     1 <dbl [1]>
+    ## 2     2 <dbl [2]>
+    ## 3     3 <dbl [3]>
+    ## 4     4 <dbl [4]>
+    ## 5     5 <dbl [5]>
 
 The pipe `%>%`
 --------------
@@ -183,7 +172,7 @@ sum(1:8) %>%
 `dplyr`
 -------
 
-Common data(frame) manipulation taks.
+Common data(frame) manipulation tasks.
 
 Four core "verbs": filter, select, arrange, group\_by + summarize, plus many more convenience functions.
 
@@ -358,13 +347,62 @@ basetab[1:5, , ]
     ##   1946     0  0     0 0
     ##   1951     0  0     0 0
 
+### joins
+
+`dplyr` also does multi-table joins and can connect to various types of databases.
+
+``` r
+t1 = data_frame(alpha = letters[1:6], num = 1:6)
+t2 = data_frame(alpha = letters[4:10], num = 4:10)
+full_join(t1, t2, by = "alpha", suffix = c("_t1", "_t2"))
+```
+
+    ## # A tibble: 10 × 3
+    ##    alpha num_t1 num_t2
+    ##    <chr>  <int>  <int>
+    ## 1      a      1     NA
+    ## 2      b      2     NA
+    ## 3      c      3     NA
+    ## 4      d      4      4
+    ## 5      e      5      5
+    ## 6      f      6      6
+    ## 7      g     NA      7
+    ## 8      h     NA      8
+    ## 9      i     NA      9
+    ## 10     j     NA     10
+
+Super-secret pro-tip: You can `group_by` %&gt;% `mutate` to accomplish a summarize + join
+
+``` r
+data_frame(group = sample(letters[1:3], 10, replace = TRUE),
+           value = rnorm(10)) %>%
+  group_by(group) %>%
+  mutate(group_average = mean(value))
+```
+
+    ## Source: local data frame [10 x 3]
+    ## Groups: group [3]
+    ## 
+    ##    group      value group_average
+    ##    <chr>      <dbl>         <dbl>
+    ## 1      b -2.3066090   -0.19680615
+    ## 2      b  0.2284223   -0.19680615
+    ## 3      c -0.8583087    0.03741843
+    ## 4      c  0.9084764    0.03741843
+    ## 5      c  0.1638478    0.03741843
+    ## 6      b  0.8417681   -0.19680615
+    ## 7      c  1.0169192    0.03741843
+    ## 8      c -1.0438425    0.03741843
+    ## 9      b  0.4491940   -0.19680615
+    ## 10     a  1.1415124    1.14151236
+
 `tidyr`
 -------
 
 Latest generation of `reshape`. `gather` to make wide table long, `spread` to make long tables wide.
 
 ``` r
-who
+who  # Tuberculosis data from the WHO
 ```
 
     ## # A tibble: 7,240 × 60
@@ -456,7 +494,7 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   2.803   0.138   3.081
+    ##   2.579   0.084   2.704
 
 ``` r
 system.time(
@@ -465,16 +503,16 @@ system.time(
 ```
 
     ##    user  system elapsed 
-    ##   0.903   0.089   1.125
+    ##   0.819   0.069   0.940
 
 ``` r
 read.csv("base-write.csv", nrows = 3)
 ```
 
     ##   X int squares letters
-    ## 1 1   1       1       o
-    ## 2 2   2       4       u
-    ## 3 3   3       9       n
+    ## 1 1   1       1       h
+    ## 2 2   2       4       d
+    ## 3 3   3       9       m
 
 ``` r
 read_csv("readr-write.csv", n_max = 3)
@@ -490,28 +528,435 @@ read_csv("readr-write.csv", n_max = 3)
     ## # A tibble: 3 × 3
     ##     int squares letters
     ##   <int>   <dbl>   <chr>
-    ## 1     1       1       o
-    ## 2     2       4       u
-    ## 3     3       9       n
+    ## 1     1       1       h
+    ## 2     2       4       d
+    ## 3     3       9       m
 
-------------------------------------------------------------------------
+`purrr`
+-------
 
-For stringr...
+`purrr` is kind of like `dplyr` for lists. It helps you repeatedly apply functions. Like the rest of the tidyverse, nothing you can't do in base R, but `purrr` makes the API consistent, encourages type specificity, and provides some nice shortcuts and speed ups.
 
 ``` r
-library(stringr)
-who %>%
-    select(-iso2, -iso3) %>%
-    gather(group, cases, -country, -year) %>%
-    mutate(group = str_replace(group, "(new_)|(new)", ""),
-           method = str_extract(group, "[a-z]+"),
-           gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
-           age_group = str_extract(group, "[0-9]+")) %>%
-    group_by(country, year, method) %>%
-    summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
-    ggplot(aes(x = year, y = total_cases, group = country)) +
-    geom_line() +
-    facet_wrap(~ method)
+df = data_frame(fun = rep(c(lapply, map), 2),
+                n = rep(c(1e5, 1e7), each = 2),
+                comp_time = map2(fun, n, ~system.time(.x(1:.y, sqrt))))
+df$comp_time
 ```
 
-![](tidyverse_files/figure-markdown_github/unnamed-chunk-4-1.png)
+    ## [[1]]
+    ##    user  system elapsed 
+    ##   0.054   0.002   0.056 
+    ## 
+    ## [[2]]
+    ##    user  system elapsed 
+    ##   0.036   0.000   0.036 
+    ## 
+    ## [[3]]
+    ##    user  system elapsed 
+    ##  12.741   0.327  13.373 
+    ## 
+    ## [[4]]
+    ##    user  system elapsed 
+    ##   8.630   0.264   8.958
+
+### `map`
+
+Vanilla `map` is like a slightly improved version of `lapply`. Do a function on each item in a list.
+
+``` r
+map(1:4, log)
+```
+
+    ## [[1]]
+    ## [1] 0
+    ## 
+    ## [[2]]
+    ## [1] 0.6931472
+    ## 
+    ## [[3]]
+    ## [1] 1.098612
+    ## 
+    ## [[4]]
+    ## [1] 1.386294
+
+Can supply additional arguments as with `(x)apply`
+
+``` r
+map(1:4, log, base = 2)
+```
+
+    ## [[1]]
+    ## [1] 0
+    ## 
+    ## [[2]]
+    ## [1] 1
+    ## 
+    ## [[3]]
+    ## [1] 1.584963
+    ## 
+    ## [[4]]
+    ## [1] 2
+
+Can compose anonymous functions like `(x)apply`, either the old way or with a new formula shorthand.
+
+``` r
+map(1:4, ~ log(4, base = .x))  # == map(1:4, function(x) log(4, base = x))
+```
+
+    ## [[1]]
+    ## [1] Inf
+    ## 
+    ## [[2]]
+    ## [1] 2
+    ## 
+    ## [[3]]
+    ## [1] 1.26186
+    ## 
+    ## [[4]]
+    ## [1] 1
+
+`map_xxx` type-specifies the output and simplifies the list to a vector.
+
+``` r
+map_dbl(1:4, log, base = 2)
+```
+
+    ## [1] 0.000000 1.000000 1.584963 2.000000
+
+And throws an error if any output isn't of the expected type (which is a good thing!).
+
+``` r
+map_int(1:4, log, base = 2)
+```
+
+    ## Error: Can't coerce element 1 from a double to a integer
+
+`map2` is like `mapply` -- apply a function over two lists in parallel. `map_n` generalizes to any number of lists.
+
+``` r
+fwd = 1:10
+bck = 10:1
+map2_dbl(fwd, bck, `^`)
+```
+
+    ##  [1]     1   512  6561 16384 15625  7776  2401   512    81    10
+
+`map_if` tests each element on a function and if true applies the second function, if false returns the original element.
+
+``` r
+data_frame(ints = 1:5, lets = letters[1:5], sqrts = ints^.5) %>%
+  map_if(is.numeric, ~ .x^2) 
+```
+
+    ## $ints
+    ## [1]  1  4  9 16 25
+    ## 
+    ## $lets
+    ## [1] "a" "b" "c" "d" "e"
+    ## 
+    ## $sqrts
+    ## [1] 1 2 3 4 5
+
+`broom` (and then back to `purrr`)
+----------------------------------
+
+`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
+
+``` r
+d = data_frame(x = runif(20, 0, 10), 
+               y = 2 * x + rnorm(10))
+qplot(x, y, data = d)
+```
+
+![](tidyverse_files/figure-markdown_github/unnamed-chunk-11-1.png)
+
+### `tidy`
+
+``` r
+library(broom)  # Not attached with tidyverse
+model = lm(y ~ x, d)
+tidy(model)
+```
+
+    ##          term    estimate  std.error   statistic      p.value
+    ## 1 (Intercept) -0.02212952 0.32815614 -0.06743595 9.469781e-01
+    ## 2           x  2.04880361 0.06368259 32.17211622 2.328477e-17
+
+### `augment`
+
+``` r
+aug = augment(model)
+aug
+```
+
+    ##            y         x   .fitted   .se.fit      .resid       .hat
+    ## 1   4.365310 2.2167792  4.519616 0.2190258 -0.15430550 0.08531087
+    ## 2  10.183616 5.4172613 11.076775 0.1790893 -0.89315878 0.05703654
+    ## 3   7.215538 3.2282729  6.591968 0.1843041  0.62357006 0.06040652
+    ## 4  16.104626 7.9968916 16.361931 0.2823602 -0.25730454 0.14178182
+    ## 5  15.469541 8.0496637 16.470051 0.2850711 -1.00050940 0.14451735
+    ## 6   1.777862 0.5917886  1.190329 0.2963871  0.58753261 0.15621841
+    ## 7  14.792232 7.4687935 15.279961 0.2560816 -0.48772985 0.11661935
+    ## 8   7.947098 3.9047317  7.977899 0.1709766 -0.03080099 0.05198605
+    ## 9   6.652823 3.3824637  6.907874 0.1804498 -0.25505137 0.05790640
+    ## 10 16.466676 7.2607843 14.853792 0.2462225  1.61288435 0.10781254
+    ## 11  9.147981 4.6081148  9.418993 0.1680642 -0.27101132 0.05023009
+    ## 12  7.045629 3.8482676  7.862215 0.1717156 -0.81658622 0.05243644
+    ## 13 15.521358 7.3811829 15.100465 0.2518912  0.42089305 0.11283397
+    ## 14  2.047400 0.9682785  1.961683 0.2769494  0.08571719 0.13640005
+    ## 15  1.924992 1.2773890  2.594990 0.2615541 -0.66999792 0.12165693
+    ## 16  6.737163 3.0714391  6.270646 0.1886685  0.46651671 0.06330129
+    ## 17  1.835538 0.9904465  2.007101 0.2758271 -0.17156311 0.13529686
+    ## 18  3.904365 1.8833655  3.836516 0.2332531  0.06784899 0.09675390
+    ## 19 16.870169 8.4911367 17.374542 0.3082513 -0.50437308 0.16897542
+    ## 20 15.051012 6.5529524 13.403583 0.2154124  1.64742911 0.08251922
+    ##       .sigma      .cooksd  .std.resid
+    ## 1  0.7706297 2.158758e-03 -0.21515503
+    ## 2  0.7386729 4.549928e-02 -1.22655805
+    ## 3  0.7556838 2.365691e-02  0.85787128
+    ## 4  0.7686765 1.133193e-02 -0.37038676
+    ## 5  0.7256519 1.757615e-01 -1.44252197
+    ## 6  0.7558680 6.734724e-02  0.85295049
+    ## 7  0.7612891 3.160947e-02 -0.69200983
+    ## 8  0.7715844 4.879446e-05 -0.04218560
+    ## 9  0.7689861 3.773788e-03 -0.35041888
+    ## 10 0.6510658 3.132905e-01  2.27709965
+    ## 11 0.7686693 3.636518e-03 -0.37083874
+    ## 12 0.7443161 3.462616e-02 -1.11867707
+    ## 13 0.7639734 2.258173e-02  0.59590381
+    ## 14 0.7712982 1.194837e-03  0.12300378
+    ## 15 0.7518898 6.294179e-02 -0.95334091
+    ## 16 0.7627149 1.396146e-02  0.64279740
+    ## 17 0.7703240 4.735711e-03 -0.24603520
+    ## 18 0.7714283 4.854302e-04  0.09520224
+    ## 19 0.7598647 5.534563e-02 -0.73782239
+    ## 20 0.6491487 2.365693e-01  2.29358645
+
+``` r
+ggplot(aug, aes(x = x)) +
+  geom_point(aes(y = y)) + 
+  geom_line(aes(y = .fitted))
+```
+
+![](tidyverse_files/figure-markdown_github/unnamed-chunk-14-1.png)
+
+``` r
+ggplot(aug, aes(.fitted, .resid)) + 
+  geom_point()
+```
+
+![](tidyverse_files/figure-markdown_github/unnamed-chunk-15-1.png)
+
+Split the movies data frame by mpaa rating, fit a linear model to each data frame, and organize the model results in a data frame.
+
+``` r
+movies %>% 
+  filter(mpaa != "") %>%
+  split(.$mpaa) %>%
+  map(~ lm(rating ~ budget, data = .)) %>%
+  map_df(tidy, .id = "mpaa-rating") %>%
+  arrange(term)
+```
+
+    ##   mpaa-rating        term      estimate    std.error   statistic
+    ## 1       NC-17 (Intercept)  6.505809e+00 3.124604e-01  20.8212250
+    ## 2          PG (Intercept)  5.768036e+00 1.368008e-01  42.1637635
+    ## 3       PG-13 (Intercept)  5.749256e+00 7.809921e-02  73.6147735
+    ## 4           R (Intercept)  5.814014e+00 5.238965e-02 110.9764024
+    ## 5       NC-17      budget -6.046148e-08 1.835425e-08  -3.2941404
+    ## 6          PG      budget  2.028426e-09 2.745805e-09   0.7387365
+    ## 7       PG-13      budget  3.493136e-09 1.443405e-09   2.4200674
+    ## 8           R      budget  7.732453e-09 1.658841e-09   4.6613582
+    ##         p.value
+    ## 1  4.732587e-06
+    ## 2 1.856102e-104
+    ## 3 8.291365e-280
+    ## 4  0.000000e+00
+    ## 5  2.161461e-02
+    ## 6  4.608918e-01
+    ## 7  1.585419e-02
+    ## 8  3.540387e-06
+
+List columns make it easier to organize complex datasets.
+
+``` r
+data_frame(
+  dist = c("normal", "poisson", "chi-square"),
+  funs = list(rnorm, rpois, rchisq),
+  samples = map(funs, ~.(100, 5)),
+  mean = map_dbl(samples, mean),
+  var = map_dbl(samples, var)
+)
+```
+
+    ## # A tibble: 3 × 5
+    ##         dist   funs     samples     mean        var
+    ##        <chr> <list>      <list>    <dbl>      <dbl>
+    ## 1     normal  <fun> <dbl [100]> 4.897684  0.9952718
+    ## 2    poisson  <fun> <int [100]> 4.990000  4.1716162
+    ## 3 chi-square  <fun> <dbl [100]> 5.466018 12.3804613
+
+Let's see if we can really make this purrr... Fit a linear model of diamond price by every combination of two predictors in the dataset and see which two predict best.
+
+``` r
+train = sample(nrow(diamonds), floor(nrow(diamonds) * .67))
+setdiff(names(diamonds), "price") %>%
+  combn(2, paste, collapse = " + ") %>%
+  structure(., names = .) %>%
+  map(~ formula(paste("price ~ ", .x))) %>%
+  map(lm, data = diamonds[train, ]) %>%
+  map_df(augment, newdata = diamonds[-train, ], .id = "predictors") %>%
+  group_by(predictors) %>%
+  summarize(rmse = sqrt(mean((price - .fitted)^2))) %>%
+  arrange(rmse)
+```
+
+    ## # A tibble: 36 × 2
+    ##         predictors     rmse
+    ##              <chr>    <dbl>
+    ## 1  carat + clarity 1296.010
+    ## 2    carat + color 1474.577
+    ## 3      carat + cut 1518.669
+    ## 4        carat + x 1530.131
+    ## 5        carat + y 1545.970
+    ## 6    carat + depth 1546.579
+    ## 7    carat + table 1549.821
+    ## 8        carat + z 1557.959
+    ## 9      clarity + x 1672.964
+    ## 10     clarity + y 1689.942
+    ## # ... with 26 more rows
+
+### Type-stability
+
+We have seen that we can use map\_lgl to ensure we get a logical vector, map\_chr to ensure we get a character vector back, etc. Here are two more type-stable function implemented in `purrr`.
+
+#### `flatten`
+
+Like `unlist` but specify output type, and never recurses.
+
+``` r
+map(-1:3, ~.x ^ seq(-.5, .5, .5)) %>%
+  flatten_dbl()
+```
+
+    ##  [1]       NaN 1.0000000       NaN       Inf 1.0000000 0.0000000 1.0000000
+    ##  [8] 1.0000000 1.0000000 0.7071068 1.0000000 1.4142136 0.5773503 1.0000000
+    ## [15] 1.7320508
+
+#### `safely`
+
+``` r
+junk = list(letters, 1:20, median)
+map(junk, ~ log(.x))
+```
+
+    ## Error in log(.x): non-numeric argument to mathematical function
+
+-   `safely` "catches" errors and always "succeeds".
+-   `try` does the same, but either returns the value or a try-error object.
+-   `safely` is type-stable. It always returns a length-two list with one object NULL.
+
+``` r
+safe = map(junk, ~ safely(log)(.x))  # Note the different syntax from try(log(.x)). `safely(log)` creates a new function.
+safe
+```
+
+    ## [[1]]
+    ## [[1]]$result
+    ## NULL
+    ## 
+    ## [[1]]$error
+    ## <simpleError in .f(...): non-numeric argument to mathematical function>
+    ## 
+    ## 
+    ## [[2]]
+    ## [[2]]$result
+    ##  [1] 0.0000000 0.6931472 1.0986123 1.3862944 1.6094379 1.7917595 1.9459101
+    ##  [8] 2.0794415 2.1972246 2.3025851 2.3978953 2.4849066 2.5649494 2.6390573
+    ## [15] 2.7080502 2.7725887 2.8332133 2.8903718 2.9444390 2.9957323
+    ## 
+    ## [[2]]$error
+    ## NULL
+    ## 
+    ## 
+    ## [[3]]
+    ## [[3]]$result
+    ## NULL
+    ## 
+    ## [[3]]$error
+    ## <simpleError in .f(...): non-numeric argument to mathematical function>
+
+Now we can easily move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
+
+``` r
+transpose(safe)
+```
+
+    ## $result
+    ## $result[[1]]
+    ## NULL
+    ## 
+    ## $result[[2]]
+    ##  [1] 0.0000000 0.6931472 1.0986123 1.3862944 1.6094379 1.7917595 1.9459101
+    ##  [8] 2.0794415 2.1972246 2.3025851 2.3978953 2.4849066 2.5649494 2.6390573
+    ## [15] 2.7080502 2.7725887 2.8332133 2.8903718 2.9444390 2.9957323
+    ## 
+    ## $result[[3]]
+    ## NULL
+    ## 
+    ## 
+    ## $error
+    ## $error[[1]]
+    ## <simpleError in .f(...): non-numeric argument to mathematical function>
+    ## 
+    ## $error[[2]]
+    ## NULL
+    ## 
+    ## $error[[3]]
+    ## <simpleError in .f(...): non-numeric argument to mathematical function>
+
+`stringr`
+---------
+
+All your string manipulation and regex functions with a consistent API.
+
+``` r
+library(stringr)  # not attached with tidyverse
+fishes <- c("one fish", "two fish", "red fish", "blue fish")
+str_detect(fishes, "two")
+```
+
+    ## [1] FALSE  TRUE FALSE FALSE
+
+``` r
+str_replace_all(fishes, "fish", "banana")
+```
+
+    ## [1] "one banana"  "two banana"  "red banana"  "blue banana"
+
+``` r
+str_extract(fishes, "[a-z]\\s")
+```
+
+    ## [1] "e " "o " "d " "e "
+
+Returning to the tuberculousis data. Let's separate out the messy column names that contain the detection method, gender, and age-class of the patients.
+
+``` r
+who %>%
+  select(-iso2, -iso3) %>%
+  gather(group, cases, -country, -year) %>%
+  mutate(group = str_replace(group, "new_*", ""),
+         method = str_extract(group, "[a-z]+"),
+         gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
+         age_group = str_extract(group, "[0-9]+")) %>%
+  group_by(year, gender, age_group, method) %>%
+  summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
+  ggplot(aes(x = year, y = total_cases, color = age_group, linetype = gender)) +
+  geom_line() +
+  facet_wrap(~ method) +
+  scale_y_log10() 
+```
+
+![](tidyverse_files/figure-markdown_github/unnamed-chunk-26-1.png)
