@@ -383,18 +383,18 @@ data_frame(group = sample(letters[1:3], 10, replace = TRUE),
     ## Source: local data frame [10 x 3]
     ## Groups: group [3]
     ## 
-    ##    group      value group_average
-    ##    <chr>      <dbl>         <dbl>
-    ## 1      b -2.3066090   -0.19680615
-    ## 2      b  0.2284223   -0.19680615
-    ## 3      c -0.8583087    0.03741843
-    ## 4      c  0.9084764    0.03741843
-    ## 5      c  0.1638478    0.03741843
-    ## 6      b  0.8417681   -0.19680615
-    ## 7      c  1.0169192    0.03741843
-    ## 8      c -1.0438425    0.03741843
-    ## 9      b  0.4491940   -0.19680615
-    ## 10     a  1.1415124    1.14151236
+    ##    group       value group_average
+    ##    <chr>       <dbl>         <dbl>
+    ## 1      b -0.07744649   -0.61076927
+    ## 2      c  0.11825771    0.08865786
+    ## 3      c  0.58866540    0.08865786
+    ## 4      c  0.27584554    0.08865786
+    ## 5      b -0.80187845   -0.61076927
+    ## 6      c -0.33398635    0.08865786
+    ## 7      c -0.20549302    0.08865786
+    ## 8      b -0.95298286   -0.61076927
+    ## 9      a -0.48253785   -0.68985472
+    ## 10     a -0.89717159   -0.68985472
 
 `tidyr`
 -------
@@ -532,6 +532,100 @@ read_csv("readr-write.csv", n_max = 3)
     ## 2     2       4       d
     ## 3     3       9       m
 
+`broom` (and then back to `purrr`)
+----------------------------------
+
+`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
+
+``` r
+d = data_frame(x = runif(20, 0, 10), 
+               y = 2 * x + rnorm(10))
+qplot(x, y, data = d)
+```
+
+![](tidyverse_files/figure-markdown_github/make%20model%20data-1.png)
+
+### `tidy`
+
+``` r
+library(broom)  # Not attached with tidyverse
+model = lm(y ~ x, d)
+tidy(model)
+```
+
+    ##          term    estimate  std.error   statistic      p.value
+    ## 1 (Intercept) -0.02212952 0.32815614 -0.06743595 9.469781e-01
+    ## 2           x  2.04880361 0.06368259 32.17211622 2.328477e-17
+
+### `augment`
+
+i.e. The function formerly known as `fortify`.
+
+``` r
+aug = augment(model)
+aug
+```
+
+    ##            y         x   .fitted   .se.fit      .resid       .hat
+    ## 1   4.365310 2.2167792  4.519616 0.2190258 -0.15430550 0.08531087
+    ## 2  10.183616 5.4172613 11.076775 0.1790893 -0.89315878 0.05703654
+    ## 3   7.215538 3.2282729  6.591968 0.1843041  0.62357006 0.06040652
+    ## 4  16.104626 7.9968916 16.361931 0.2823602 -0.25730454 0.14178182
+    ## 5  15.469541 8.0496637 16.470051 0.2850711 -1.00050940 0.14451735
+    ## 6   1.777862 0.5917886  1.190329 0.2963871  0.58753261 0.15621841
+    ## 7  14.792232 7.4687935 15.279961 0.2560816 -0.48772985 0.11661935
+    ## 8   7.947098 3.9047317  7.977899 0.1709766 -0.03080099 0.05198605
+    ## 9   6.652823 3.3824637  6.907874 0.1804498 -0.25505137 0.05790640
+    ## 10 16.466676 7.2607843 14.853792 0.2462225  1.61288435 0.10781254
+    ## 11  9.147981 4.6081148  9.418993 0.1680642 -0.27101132 0.05023009
+    ## 12  7.045629 3.8482676  7.862215 0.1717156 -0.81658622 0.05243644
+    ## 13 15.521358 7.3811829 15.100465 0.2518912  0.42089305 0.11283397
+    ## 14  2.047400 0.9682785  1.961683 0.2769494  0.08571719 0.13640005
+    ## 15  1.924992 1.2773890  2.594990 0.2615541 -0.66999792 0.12165693
+    ## 16  6.737163 3.0714391  6.270646 0.1886685  0.46651671 0.06330129
+    ## 17  1.835538 0.9904465  2.007101 0.2758271 -0.17156311 0.13529686
+    ## 18  3.904365 1.8833655  3.836516 0.2332531  0.06784899 0.09675390
+    ## 19 16.870169 8.4911367 17.374542 0.3082513 -0.50437308 0.16897542
+    ## 20 15.051012 6.5529524 13.403583 0.2154124  1.64742911 0.08251922
+    ##       .sigma      .cooksd  .std.resid
+    ## 1  0.7706297 2.158758e-03 -0.21515503
+    ## 2  0.7386729 4.549928e-02 -1.22655805
+    ## 3  0.7556838 2.365691e-02  0.85787128
+    ## 4  0.7686765 1.133193e-02 -0.37038676
+    ## 5  0.7256519 1.757615e-01 -1.44252197
+    ## 6  0.7558680 6.734724e-02  0.85295049
+    ## 7  0.7612891 3.160947e-02 -0.69200983
+    ## 8  0.7715844 4.879446e-05 -0.04218560
+    ## 9  0.7689861 3.773788e-03 -0.35041888
+    ## 10 0.6510658 3.132905e-01  2.27709965
+    ## 11 0.7686693 3.636518e-03 -0.37083874
+    ## 12 0.7443161 3.462616e-02 -1.11867707
+    ## 13 0.7639734 2.258173e-02  0.59590381
+    ## 14 0.7712982 1.194837e-03  0.12300378
+    ## 15 0.7518898 6.294179e-02 -0.95334091
+    ## 16 0.7627149 1.396146e-02  0.64279740
+    ## 17 0.7703240 4.735711e-03 -0.24603520
+    ## 18 0.7714283 4.854302e-04  0.09520224
+    ## 19 0.7598647 5.534563e-02 -0.73782239
+    ## 20 0.6491487 2.365693e-01  2.29358645
+
+``` r
+ggplot(aug, aes(x = x)) +
+  geom_point(aes(y = y, color = .resid)) + 
+  geom_line(aes(y = .fitted)) +
+  viridis::scale_color_viridis() +
+  theme(legend.position = c(0, 1), legend.justification = c(0, 1))
+```
+
+![](tidyverse_files/figure-markdown_github/plot%20resid-1.png)
+
+``` r
+ggplot(aug, aes(.fitted, .resid, size = .cooksd)) + 
+  geom_point()
+```
+
+![](tidyverse_files/figure-markdown_github/plot%20cooksd-1.png)
+
 `purrr`
 -------
 
@@ -546,23 +640,23 @@ df$comp_time
 
     ## [[1]]
     ##    user  system elapsed 
-    ##   0.054   0.002   0.056 
+    ##   0.042   0.003   0.046 
     ## 
     ## [[2]]
     ##    user  system elapsed 
-    ##   0.036   0.000   0.036 
+    ##   0.055   0.001   0.059 
     ## 
     ## [[3]]
     ##    user  system elapsed 
-    ##  12.741   0.327  13.373 
+    ##  12.366   0.218  12.612 
     ## 
     ## [[4]]
     ##    user  system elapsed 
-    ##   8.630   0.264   8.958
+    ##   8.572   0.117   8.742
 
 ### `map`
 
-Vanilla `map` is like a slightly improved version of `lapply`. Do a function on each item in a list.
+Vanilla `map` is a slightly improved version of `lapply`. Do a function on each item in a list.
 
 ``` r
 map(1:4, log)
@@ -616,7 +710,7 @@ map(1:4, ~ log(4, base = .x))  # == map(1:4, function(x) log(4, base = x))
     ## [[4]]
     ## [1] 1
 
-`map_xxx` type-specifies the output and simplifies the list to a vector.
+`map` always returns a list. `map_xxx` type-specifies the output type and simplifies the list to a vector.
 
 ``` r
 map_dbl(1:4, log, base = 2)
@@ -658,95 +752,7 @@ data_frame(ints = 1:5, lets = letters[1:5], sqrts = ints^.5) %>%
     ## $sqrts
     ## [1] 1 2 3 4 5
 
-`broom` (and then back to `purrr`)
-----------------------------------
-
-`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
-
-``` r
-d = data_frame(x = runif(20, 0, 10), 
-               y = 2 * x + rnorm(10))
-qplot(x, y, data = d)
-```
-
-![](tidyverse_files/figure-markdown_github/unnamed-chunk-11-1.png)
-
-### `tidy`
-
-``` r
-library(broom)  # Not attached with tidyverse
-model = lm(y ~ x, d)
-tidy(model)
-```
-
-    ##          term    estimate  std.error   statistic      p.value
-    ## 1 (Intercept) -0.02212952 0.32815614 -0.06743595 9.469781e-01
-    ## 2           x  2.04880361 0.06368259 32.17211622 2.328477e-17
-
-### `augment`
-
-``` r
-aug = augment(model)
-aug
-```
-
-    ##            y         x   .fitted   .se.fit      .resid       .hat
-    ## 1   4.365310 2.2167792  4.519616 0.2190258 -0.15430550 0.08531087
-    ## 2  10.183616 5.4172613 11.076775 0.1790893 -0.89315878 0.05703654
-    ## 3   7.215538 3.2282729  6.591968 0.1843041  0.62357006 0.06040652
-    ## 4  16.104626 7.9968916 16.361931 0.2823602 -0.25730454 0.14178182
-    ## 5  15.469541 8.0496637 16.470051 0.2850711 -1.00050940 0.14451735
-    ## 6   1.777862 0.5917886  1.190329 0.2963871  0.58753261 0.15621841
-    ## 7  14.792232 7.4687935 15.279961 0.2560816 -0.48772985 0.11661935
-    ## 8   7.947098 3.9047317  7.977899 0.1709766 -0.03080099 0.05198605
-    ## 9   6.652823 3.3824637  6.907874 0.1804498 -0.25505137 0.05790640
-    ## 10 16.466676 7.2607843 14.853792 0.2462225  1.61288435 0.10781254
-    ## 11  9.147981 4.6081148  9.418993 0.1680642 -0.27101132 0.05023009
-    ## 12  7.045629 3.8482676  7.862215 0.1717156 -0.81658622 0.05243644
-    ## 13 15.521358 7.3811829 15.100465 0.2518912  0.42089305 0.11283397
-    ## 14  2.047400 0.9682785  1.961683 0.2769494  0.08571719 0.13640005
-    ## 15  1.924992 1.2773890  2.594990 0.2615541 -0.66999792 0.12165693
-    ## 16  6.737163 3.0714391  6.270646 0.1886685  0.46651671 0.06330129
-    ## 17  1.835538 0.9904465  2.007101 0.2758271 -0.17156311 0.13529686
-    ## 18  3.904365 1.8833655  3.836516 0.2332531  0.06784899 0.09675390
-    ## 19 16.870169 8.4911367 17.374542 0.3082513 -0.50437308 0.16897542
-    ## 20 15.051012 6.5529524 13.403583 0.2154124  1.64742911 0.08251922
-    ##       .sigma      .cooksd  .std.resid
-    ## 1  0.7706297 2.158758e-03 -0.21515503
-    ## 2  0.7386729 4.549928e-02 -1.22655805
-    ## 3  0.7556838 2.365691e-02  0.85787128
-    ## 4  0.7686765 1.133193e-02 -0.37038676
-    ## 5  0.7256519 1.757615e-01 -1.44252197
-    ## 6  0.7558680 6.734724e-02  0.85295049
-    ## 7  0.7612891 3.160947e-02 -0.69200983
-    ## 8  0.7715844 4.879446e-05 -0.04218560
-    ## 9  0.7689861 3.773788e-03 -0.35041888
-    ## 10 0.6510658 3.132905e-01  2.27709965
-    ## 11 0.7686693 3.636518e-03 -0.37083874
-    ## 12 0.7443161 3.462616e-02 -1.11867707
-    ## 13 0.7639734 2.258173e-02  0.59590381
-    ## 14 0.7712982 1.194837e-03  0.12300378
-    ## 15 0.7518898 6.294179e-02 -0.95334091
-    ## 16 0.7627149 1.396146e-02  0.64279740
-    ## 17 0.7703240 4.735711e-03 -0.24603520
-    ## 18 0.7714283 4.854302e-04  0.09520224
-    ## 19 0.7598647 5.534563e-02 -0.73782239
-    ## 20 0.6491487 2.365693e-01  2.29358645
-
-``` r
-ggplot(aug, aes(x = x)) +
-  geom_point(aes(y = y)) + 
-  geom_line(aes(y = .fitted))
-```
-
-![](tidyverse_files/figure-markdown_github/unnamed-chunk-14-1.png)
-
-``` r
-ggplot(aug, aes(.fitted, .resid)) + 
-  geom_point()
-```
-
-![](tidyverse_files/figure-markdown_github/unnamed-chunk-15-1.png)
+### Putting `map` to work
 
 Split the movies data frame by mpaa rating, fit a linear model to each data frame, and organize the model results in a data frame.
 
@@ -778,24 +784,27 @@ movies %>%
     ## 7  1.585419e-02
     ## 8  3.540387e-06
 
-List columns make it easier to organize complex datasets.
+List-columns make it easier to organize complex datasets. Can `map` over list-columns right in `data_frame`/`tibble` creation. And if you later want to calculate something else, everything is nicely organized in the data frame.
 
 ``` r
-data_frame(
-  dist = c("normal", "poisson", "chi-square"),
-  funs = list(rnorm, rpois, rchisq),
-  samples = map(funs, ~.(100, 5)),
-  mean = map_dbl(samples, mean),
-  var = map_dbl(samples, var)
-)
+d = 
+  data_frame(
+    dist = c("normal", "poisson", "chi-square"),
+    funs = list(rnorm, rpois, rchisq),
+    samples = map(funs, ~.(100, 5)),
+    mean = map_dbl(samples, mean),
+    var = map_dbl(samples, var)
+  )
+d$median = map_dbl(d$samples, median)
+d
 ```
 
-    ## # A tibble: 3 × 5
-    ##         dist   funs     samples     mean        var
-    ##        <chr> <list>      <list>    <dbl>      <dbl>
-    ## 1     normal  <fun> <dbl [100]> 4.897684  0.9952718
-    ## 2    poisson  <fun> <int [100]> 4.990000  4.1716162
-    ## 3 chi-square  <fun> <dbl [100]> 5.466018 12.3804613
+    ## # A tibble: 3 × 6
+    ##         dist   funs     samples     mean        var   median
+    ##        <chr> <list>      <list>    <dbl>      <dbl>    <dbl>
+    ## 1     normal  <fun> <dbl [100]> 4.897684  0.9952718 4.910766
+    ## 2    poisson  <fun> <int [100]> 4.990000  4.1716162 5.000000
+    ## 3 chi-square  <fun> <dbl [100]> 5.466018 12.3804613 4.923235
 
 Let's see if we can really make this purrr... Fit a linear model of diamond price by every combination of two predictors in the dataset and see which two predict best.
 
@@ -829,11 +838,11 @@ setdiff(names(diamonds), "price") %>%
 
 ### Type-stability
 
-We have seen that we can use map\_lgl to ensure we get a logical vector, map\_chr to ensure we get a character vector back, etc. Here are two more type-stable function implemented in `purrr`.
+We have seen that we can use map\_lgl to ensure we get a logical vector, map\_chr to ensure we get a character vector back, etc. Type stability is like a little built-in unit test. You make sure you're getting what you think you are, even in the middle of a pipeline or function. Here are two more type-stable function implemented in `purrr`.
 
 #### `flatten`
 
-Like `unlist` but specify output type, and never recurses.
+Like `unlist` but can specify output type, and never recurses.
 
 ``` r
 map(-1:3, ~.x ^ seq(-.5, .5, .5)) %>%
@@ -887,7 +896,9 @@ safe
     ## [[3]]$error
     ## <simpleError in .f(...): non-numeric argument to mathematical function>
 
-Now we can easily move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
+#### `transpose` a list!
+
+Now we could conveniently move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
 
 ``` r
 transpose(safe)
@@ -916,6 +927,19 @@ transpose(safe)
     ## $error[[3]]
     ## <simpleError in .f(...): non-numeric argument to mathematical function>
 
+``` r
+map_if(transpose(safe)$result, ~!is.null(.x), median)
+```
+
+    ## [[1]]
+    ## NULL
+    ## 
+    ## [[2]]
+    ## [1] 2.35024
+    ## 
+    ## [[3]]
+    ## NULL
+
 `stringr`
 ---------
 
@@ -941,7 +965,7 @@ str_extract(fishes, "[a-z]\\s")
 
     ## [1] "e " "o " "d " "e "
 
-Returning to the tuberculousis data. Let's separate out the messy column names that contain the detection method, gender, and age-class of the patients.
+Let's put that string manipulation engine to work. Remember the annoying column names in the WHO data? They look like this new\_sp\_m014, new\_sp\_m1524, new\_sp\_m2534, where "new" or "new\_" doesn't mean anything, the following 2-3 letters indicate the test used, the following letter indicates the gender, and the final 2-4 numbers indicates the age-class. A string-handling challenge if ever there was one. Let's separate it out and plot the cases by year, gender, age-class, and test-method.
 
 ``` r
 who %>%
@@ -950,13 +974,19 @@ who %>%
   mutate(group = str_replace(group, "new_*", ""),
          method = str_extract(group, "[a-z]+"),
          gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
-         age_group = str_extract(group, "[0-9]+")) %>%
-  group_by(year, gender, age_group, method) %>%
+         age = str_extract(group, "[0-9]+"),
+         age = ifelse(str_length(age) > 2,
+                      str_c(str_sub(age, 1, -3), str_sub(age, -2, -1), sep = "-"),
+                      str_c(age, "+"))) %>%
+  group_by(year, gender, age, method) %>%
   summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
-  ggplot(aes(x = year, y = total_cases, color = age_group, linetype = gender)) +
+  ggplot(aes(x = year, y = total_cases, linetype = gender)) +
   geom_line() +
-  facet_wrap(~ method) +
-  scale_y_log10() 
+  facet_grid(method ~ age,
+             labeller = labeller(.rows = label_both, .cols = label_both)) +
+  scale_y_log10() +
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
 
-![](tidyverse_files/figure-markdown_github/unnamed-chunk-26-1.png)
+![](tidyverse_files/figure-markdown_github/unnamed-chunk-6-1.png)

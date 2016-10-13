@@ -191,7 +191,7 @@ basetab[1:5, , ]
 
 `dplyr` also does multi-table joins and can connect to various types of databases.
 
-```{r}
+```{r full join}
 t1 = data_frame(alpha = letters[1:6], num = 1:6)
 t2 = data_frame(alpha = letters[4:10], num = 4:10)
 full_join(t1, t2, by = "alpha", suffix = c("_t1", "_t2"))
@@ -200,7 +200,7 @@ full_join(t1, t2, by = "alpha", suffix = c("_t1", "_t2"))
 
 Super-secret pro-tip: You can `group_by` %>% `mutate` to accomplish a summarize + join
 
-```{r}
+```{r group mutate}
 data_frame(group = sample(letters[1:3], 10, replace = TRUE),
            value = rnorm(10)) %>%
   group_by(group) %>%
@@ -270,11 +270,53 @@ read.csv("base-write.csv", nrows = 3)
 read_csv("readr-write.csv", n_max = 3)
 ```
 
+## `broom` (and then back to `purrr`)
+
+`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
+
+```{r make model data}
+d = data_frame(x = runif(20, 0, 10), 
+               y = 2 * x + rnorm(10))
+qplot(x, y, data = d)
+```
+
+### `tidy`
+
+```{r tidy}
+library(broom)  # Not attached with tidyverse
+model = lm(y ~ x, d)
+tidy(model)
+```
+
+### `augment`
+
+i.e. The function formerly known as `fortify`.
+
+```{r augment}
+aug = augment(model)
+aug
+```
+
+```{r plot resid}
+ggplot(aug, aes(x = x)) +
+  geom_point(aes(y = y, color = .resid)) + 
+  geom_line(aes(y = .fitted)) +
+  viridis::scale_color_viridis() +
+  theme(legend.position = c(0, 1), legend.justification = c(0, 1))
+```
+
+```{r plot cooksd}
+ggplot(aug, aes(.fitted, .resid, size = .cooksd)) + 
+  geom_point()
+```
+
+
+
 ## `purrr`
 
 `purrr` is kind of like `dplyr` for lists. It helps you repeatedly apply functions. Like the rest of the tidyverse, nothing you can't do in base R, but `purrr` makes the API consistent, encourages type specificity, and provides some nice shortcuts and speed ups.
 
-```{r}
+```{r intro and speedtest}
 df = data_frame(fun = rep(c(lapply, map), 2),
                 n = rep(c(1e5, 1e7), each = 2),
                 comp_time = map2(fun, n, ~system.time(.x(1:.y, sqrt))))
@@ -284,40 +326,40 @@ df$comp_time
 
 ### `map`
 
-Vanilla `map` is like a slightly improved version of `lapply`. Do a function on each item in a list.
+Vanilla `map` is a slightly improved version of `lapply`. Do a function on each item in a list.
 
-```{r}
+```{r map}
 map(1:4, log)
 ```
 
 Can supply additional arguments as with `(x)apply`
 
-```{r}
+```{r map arg}
 map(1:4, log, base = 2)
 ```
 
 Can compose anonymous functions like `(x)apply`, either the old way or with a new formula shorthand. 
 
-```{r}
+```{r map formula}
 map(1:4, ~ log(4, base = .x))  # == map(1:4, function(x) log(4, base = x))
 ```
 
-`map_xxx` type-specifies the output and simplifies the list to a vector.
+`map` always returns a list. `map_xxx` type-specifies the output type and simplifies the list to a vector.
 
-```{r}
+```{r map_type}
 map_dbl(1:4, log, base = 2)
 ```
 
 And throws an error if any output isn't of the expected type (which is a good thing!).
 
-```{r}
+```{r map_type error}
 map_int(1:4, log, base = 2)
 ```
 
 
 `map2` is like `mapply` -- apply a function over two lists in parallel. `map_n` generalizes to any number of lists.
 
-```{r}
+```{r map2}
 fwd = 1:10
 bck = 10:1
 map2_dbl(fwd, bck, `^`)
@@ -325,51 +367,16 @@ map2_dbl(fwd, bck, `^`)
 
 `map_if` tests each element on a function and if true applies the second function, if false returns the original element.
 
-```{r}
+```{r map_if}
 data_frame(ints = 1:5, lets = letters[1:5], sqrts = ints^.5) %>%
   map_if(is.numeric, ~ .x^2) 
 ```
 
-
-## `broom` (and then back to `purrr`)
-
-`broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
-
-```{r}
-d = data_frame(x = runif(20, 0, 10), 
-               y = 2 * x + rnorm(10))
-qplot(x, y, data = d)
-```
-
-### `tidy`
-
-```{r}
-library(broom)  # Not attached with tidyverse
-model = lm(y ~ x, d)
-tidy(model)
-```
-
-### `augment`
-
-```{r}
-aug = augment(model)
-aug
-```
-
-```{r}
-ggplot(aug, aes(x = x)) +
-  geom_point(aes(y = y)) + 
-  geom_line(aes(y = .fitted))
-```
-
-```{r}
-ggplot(aug, aes(.fitted, .resid)) + 
-  geom_point()
-```
+### Putting `map` to work
 
 Split the movies data frame by mpaa rating, fit a linear model to each data frame, and organize the model results in a data frame.
 
-```{r}
+```{r movies split models}
 movies %>% 
   filter(mpaa != "") %>%
   split(.$mpaa) %>%
@@ -378,21 +385,24 @@ movies %>%
   arrange(term)
 ```
 
-List columns make it easier to organize complex datasets.
+List-columns make it easier to organize complex datasets. Can `map` over list-columns right in `data_frame`/`tibble` creation. And if you later want to calculate something else, everything is nicely organized in the data frame.
 
-```{r}
-data_frame(
-  dist = c("normal", "poisson", "chi-square"),
-  funs = list(rnorm, rpois, rchisq),
-  samples = map(funs, ~.(100, 5)),
-  mean = map_dbl(samples, mean),
-  var = map_dbl(samples, var)
-)
+```{r list columns + map}
+d = 
+  data_frame(
+    dist = c("normal", "poisson", "chi-square"),
+    funs = list(rnorm, rpois, rchisq),
+    samples = map(funs, ~.(100, 5)),
+    mean = map_dbl(samples, mean),
+    var = map_dbl(samples, var)
+  )
+d$median = map_dbl(d$samples, median)
+d
 ```
 
 Let's see if we can really make this purrr... Fit a linear model of diamond price by every combination of two predictors in the dataset and see which two predict best.
 
-```{r}
+```{r diamonds predictors}
 train = sample(nrow(diamonds), floor(nrow(diamonds) * .67))
 setdiff(names(diamonds), "price") %>%
   combn(2, paste, collapse = " + ") %>%
@@ -408,20 +418,20 @@ setdiff(names(diamonds), "price") %>%
 
 ### Type-stability
 
-We have seen that we can use map_lgl to ensure we get a logical vector, map_chr to ensure we get a character vector back, etc. Here are two more type-stable function implemented in `purrr`.
+We have seen that we can use map_lgl to ensure we get a logical vector, map_chr to ensure we get a character vector back, etc. Type stability is like a little built-in unit test. You make sure you're getting what you think you are, even in the middle of a pipeline or function. Here are two more type-stable function implemented in `purrr`.
 
 #### `flatten`
 
-Like `unlist` but specify output type, and never recurses.
+Like `unlist` but can specify output type, and never recurses.
 
-```{r}
+```{r flatten}
 map(-1:3, ~.x ^ seq(-.5, .5, .5)) %>%
   flatten_dbl()
 ```
 
 #### `safely`
 
-```{r}
+```{r error}
 junk = list(letters, 1:20, median)
 map(junk, ~ log(.x))
 ```
@@ -430,15 +440,21 @@ map(junk, ~ log(.x))
 - `try` does the same, but either returns the value or a try-error object.
 - `safely` is type-stable. It always returns a length-two list with one object NULL.
 
-```{r}
+```{r safely}
 safe = map(junk, ~ safely(log)(.x))  # Note the different syntax from try(log(.x)). `safely(log)` creates a new function.
 safe
 ```
 
-Now we can easily move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
+#### `transpose` a list!
+
+Now we could conveniently move on where the function succeeded, particularly using `map_if`. To get that logical vector for the `map_if` test, we can use the `transpose` function, which inverts a list.
 
 ```{r}
 transpose(safe)
+```
+
+```{r}
+map_if(transpose(safe)$result, ~!is.null(.x), median)
 ```
 
 ## `stringr`
@@ -459,21 +475,28 @@ str_replace_all(fishes, "fish", "banana")
 str_extract(fishes, "[a-z]\\s")
 ```
 
-Returning to the tuberculousis data. Let's separate out the messy column names that contain the detection method, gender, and age-class of the patients. 
+Let's put that string manipulation engine to work. Remember the annoying column names in the WHO data? They look like this `r str_c(colnames(who)[5:7], collapse = ", ")`, where "new" or "new_" doesn't mean anything, the following 2-3 letters indicate the test used, the following letter indicates the gender, and the final 2-4 numbers indicates the age-class. A string-handling challenge if ever there was one. Let's separate it out and plot the cases by year, gender, age-class, and test-method.
 
-```{r, fig.width = 7, fig.asp = .6}
+```{r, fig.width = 8, fig.asp = .6}
 who %>%
   select(-iso2, -iso3) %>%
   gather(group, cases, -country, -year) %>%
   mutate(group = str_replace(group, "new_*", ""),
          method = str_extract(group, "[a-z]+"),
          gender = str_sub(str_extract(group, "_[a-z]"), 2, 2),
-         age_group = str_extract(group, "[0-9]+")) %>%
-  group_by(year, gender, age_group, method) %>%
+         age = str_extract(group, "[0-9]+"),
+         age = ifelse(str_length(age) > 2,
+                      str_c(str_sub(age, 1, -3), str_sub(age, -2, -1), sep = "-"),
+                      str_c(age, "+"))) %>%
+  group_by(year, gender, age, method) %>%
   summarize(total_cases = sum(cases, na.rm = TRUE)) %>%
-  ggplot(aes(x = year, y = total_cases, color = age_group, linetype = gender)) +
+  ggplot(aes(x = year, y = total_cases, linetype = gender)) +
   geom_line() +
-  facet_wrap(~ method) +
-  scale_y_log10() 
+  facet_grid(method ~ age,
+             labeller = labeller(.rows = label_both, .cols = label_both)) +
+  scale_y_log10() +
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
-
+         
+         
