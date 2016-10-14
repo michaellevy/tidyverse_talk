@@ -48,7 +48,7 @@ Why tidyverse?
         -   Faster to write
         -   Easier to read
     -   Tidy data: Imposes good practices
-    -   Type stability
+    -   Type specificity
 -   You probably use some of it already. Synergize.
 -   Implements simple solutions to common problems (e.g. `purrr::transpose`)
 -   Smarter defaults
@@ -532,8 +532,8 @@ read_csv("readr-write.csv", n_max = 3)
     ## 2     2       4       d
     ## 3     3       9       m
 
-`broom` (and then back to `purrr`)
-----------------------------------
+`broom`
+-------
 
 `broom` is a convenient little package to work with model results. Two functions I find useful are `tidy` to extract model results and `augment` to add residuals, predictions, etc. to a data.frame.
 
@@ -990,3 +990,20 @@ who %>%
 ```
 
 ![](tidyverse_files/figure-markdown_github/unnamed-chunk-6-1.png)
+
+Post-talk debugging improvisation
+---------------------------------
+
+``` r
+pipe_stopifnot = function(df, test){
+  stopifnot(test)
+  return(df)
+}
+```
+
+``` r
+print_and_go = function(df, what_to_print) {
+  cat(what_to_print)
+  return(df)
+}
+```
